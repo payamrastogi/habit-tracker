@@ -19,6 +19,76 @@ function onEdit(e) {
   sendMessage('Last modified: ' + new Date())
 }
 
+function getDayOfTheMonth(){
+  var currentDate = new Date();
+  Logger.info(currentDate);
+  var dayOfTheMonth = Utilities.formatDate(currentDate, "EST", "dd");
+  Logger.info(dayOfTheMonth);
+  return dayOfTheMonth;
+}
+
+function getMonth(){
+  var currentDate = new Date();
+  Logger.info(currentDate);
+  var month = Utilities.formatDate(currentDate, "EST", "MMM");
+  Logger.info(month);
+  return month;
+}
+
+function processReminder(){
+  var dailyHabits = SpreadsheetApp.getActive().getRangeByName("DailyHabit").getValues();
+  var dayOfTheMonth = parseInt(getDayOfTheMonth());
+  var values = SpreadsheetApp.getActive().getRangeByName("Day_"+dayOfTheMonth).getValues();
+  var dailyHabitReminder = SpreadsheetApp.getActive().getRangeByName("DailyHabitReminder").getValues()
+  values.forEach(function(row, rowId) {
+    row.forEach(function(col, colId) {
+        if (!values[rowId][colId] && dailyHabitReminder[rowId][colId]){
+          var message = "Reminder: " + dailyHabits[rowId][colId];
+          createAndSendReminder(message, ("Day_"+dayOfTheMonth), rowId, colId)
+        }
+      });
+  });
+}
+
+function createAndSendReminder(message, rangeName, rowId, colId){
+  var keyboard = {
+    "inline_keyboard":[
+      [
+        {
+          "text": "Skip",
+          "callback_data": JSON.stringify({
+            "status": "skip",
+            "rangeName": rangeName,
+            "rowId": rowId,
+            "colId": colId
+          })
+        },
+        {
+          "text": "WIP",
+          "callback_data": JSON.stringify({
+            "status": "wip",
+            "rangeName": rangeName,
+            "rowId": rowId,
+            "colId": colId
+          })
+        },
+        {
+          "text": "Done",
+          "callback_data": JSON.stringify({
+            "status": "done",
+            "rangeName": rangeName,
+            "rowId": rowId,
+            "colId": colId
+          })
+        }
+      ]
+    ]
+  };
+  sendMessageWithInlineActions(message, keyboard);
+}
+
+
+
 function trigger_based(e){
   const range = e.range;
   //sendMessage('Last modified: ' + new Date())
@@ -43,8 +113,8 @@ function trigger_based(e){
   sendMessageWithInlineActions('Reminder: Daily Habit 1', keyboard);
 }
 
-let token = "[YOUR_TOKEN]";
-let webAppUrl = "[YOUR_WEB_APP_URL]";
+let token = "5620030178:AAEmCfTq8vu-ZcPRDQiecDdg2KSy2B-ow5c";
+let webAppUrl = "https://script.google.com/macros/s/AKfycbybtnyBYcFBGNuYJ_KNi4GkjaD4iF3GdYfwSxFJopiw15lh_DWiMeZ1dm2sm6xFT38-kw/exec";
 function getMe() {
   let response = UrlFetchApp.fetch("https://api.telegram.org/bot"+token+"/getMe");
   console.log(response.getContentText());
@@ -88,13 +158,14 @@ function doPost(e){
   let contents = JSON.parse(e.postData.contents);
   if (contents.callback_query){
     let chat_id = contents.callback_query.from.id;
-    let data = contents.callback_query.data;
+    let data = JSON.parse(contents.callback_query.data);
     SpreadsheetApp.getActive().getSheetByName("Test").appendRow([chat_id, data]);
-    if(data == "done"){
+    if(data.status == "done"){
+      markAsDone(data.rangeName, data.rowId, data.colId);
       sendMessage("Well Done!");
-    } else if (data == "wip"){
+    } else if (data.status == "wip"){
       sendMessage("Keep going!");
-    } else if (data == "skip"){
+    } else if (data.status == "skip"){
       sendMessage("You can still do it.");
     }
     //SpreadsheetApp.getActive().getSheetByName("Test").appendRow([chat_id, data]);
@@ -104,4 +175,15 @@ function doPost(e){
     console.log(chat_id+" : "+text);
     SpreadsheetApp.getActive().getSheetByName("Test").appendRow([chat_id, text]);
   }
+}
+
+function testMarkAsDone(){
+  markAsDone("Day_2", 3, 0);
+}
+
+function markAsDone(rangeName, rowId, colId){
+  var range = SpreadsheetApp.getActive().getRangeByName(rangeName);
+  var values = range.getValues();
+  values[rowId][colId]=true;
+  range.setValues(values);
 }
