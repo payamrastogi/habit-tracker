@@ -133,6 +133,28 @@ function sendMessage(text){
   logActivity("sent", JSON.stringify(data));
 }
 
+
+//--------Daily Motivational Quote------------------------
+function getMotivationalQuote(){
+  let response = UrlFetchApp.fetch("https://type.fit/api/quotes");
+  if(response && response.getResponseCode()==200){
+    let quotes = JSON.parse(response.getContentText());
+    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+    let quote = randomQuote.text+" - "+randomQuote.author;
+    console.log(quote);
+    return quote;
+  }
+  return null;
+}
+
+function sendDailyMotivationalQuote(){
+  let quote = getMotivationalQuote();
+  if(quote){
+    sendMessage(quote);
+  }
+}
+
+
 //-----process response from the user
 function doPost(e){
   let contents = JSON.parse(e.postData.contents);
